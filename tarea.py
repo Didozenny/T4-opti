@@ -203,8 +203,9 @@ def main(args):
 
 
 # solve problem
-    status = problem.solve()
-    solver = pulp.GUROBI_CMD(timeLimit= 300)
+    solver = pulp.GUROBI_CMD(timeLimit= 10800)
+    status = problem.solve(solver)
+    
     # output status, value of objective function
     status, pulp.LpStatus[status], pulp.value(problem.objective)
         
