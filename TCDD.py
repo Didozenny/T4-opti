@@ -199,7 +199,7 @@ def main(args):
    
        
     
-    
+    solver = pulp.GUROBI_CMD(timeLimit= 300)  
     
     # solve problem
     status = problem.solve()
