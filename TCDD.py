@@ -125,16 +125,21 @@ def main(args):
     for i in range (len(Vf)):
         Vf[i][0] = Vf[i][0]+3
     K = list(range(0,nDepots))
+    mapK = {}
+    for i in range(len(Vd)):
+        mapK[K[i]] = Vd[i][0]
     totalNodes = len(Vc)+len(Vf)+len(Vd)
+    
 
     #valor grande
     BM = 999999999
+
 
     #creamos modelo
     problem = pulp.LpProblem('MDVRP', pulp.LpMinimize)
     #creamos variables
     x = pulp.LpVariable.dicts('x', ((i,j,k) for i in range(totalNodes) for j in range(totalNodes) for k in range(len(K))), lowBound = 0, upBound = 1, cat = 'Binary')
-    y = pulp.LpVariable.dicts('y', ((i,j,k) for i in range(totalNodes) for j in range(totalNodes) for k in range(len(K))), lowBound = 0, cat = 'Integer')
+    y = pulp.LpVariable.dicts('y', ((i,j,k) for i in range(totalNodes) for j in range(totalNodes) for k in range(len(K))), lowBound = 0, cat = 'Continuous')
     z = pulp.LpVariable.dicts('y', ((i,k) for i in range(totalNodes) for k in range(len(K))), lowBound = 0, upBound = 1, cat = 'Binary')
     #funcion objetivo
     problem += 0.5 * pulp.lpSum(dist[i][j]*x[i,j,k] for i in range(totalNodes) for j in range(totalNodes) for k in range(len(K)))
@@ -147,7 +152,7 @@ def main(args):
     #(3)
     problem += pulp.lpSum(y[Vd[i][0],Vc[j][0],k] for i in range(len(Vd)) for j in range(len(Vc)) for k in range(len(K))) == pulp.lpSum(Vc[j][4] for j in range(len(Vc)))
     #(4)
-    problem += pulp.lpSum(y[Vd[i][0],Vc[j][0],k] for i in range(len(Vd)) for j in range(len(Vc)) for k in range(len(K))) <= (pulp.lpSum(vehicleLoad[k] for k in range(len(K))) - pulp.lpSum(Vc[j][4] for j in range(len(Vc))) )
+    problem += pulp.lpSum(y[Vc[j][0],Vd[i][0],k] for i in range(len(Vd)) for j in range(len(Vc)) for k in range(len(K))) <= (pulp.lpSum(vehicleLoad[k] for k in range(len(K))) - pulp.lpSum(Vc[j][4] for j in range(len(Vc))) )
     #(5)
     for i in Vf:
         for k in K:
@@ -164,30 +169,38 @@ def main(args):
     #(8)
     for i in Vc:
         problem += pulp.lpSum(z[i[0],k] for k in range(len(K)))
+
     #(9)
     for i in Vc:
         for j in range(totalNodes):
             for k in K:
                 if i[0]!=j:
                     problem += y[i[0],j,k] <= BM*z[i[0],k]
+
     #(10)
     for k in K:
         problem += pulp.lpSum(Vc[i][3]*x[Vc[i][0],j,k] for i in range(len(Vc)) for j in range(totalNodes) if Vc[i][0]!=j) + pulp.lpSum(dist[Vc[i][0]][j]*x[Vc[i][0],j,k] for i in range(len(Vc)) for j in range(totalNodes) if Vc[i]!=j) <= 2*depotDuration[0]
     #(11) Tenemos un solo vehiculo por depot por lo que podemos utilizar i tanto en i como en k
     for i in Vd:
         for k in K:
-            if k==i[0]:
-                problem += pulp.lpSum(x[i[0],Vc[j][0],i[0]] for j in range(len(Vc))) <= 1
+            if mapK[k]==i[0]:
+                problem += pulp.lpSum(x[i[0],Vc[j][0],k] for j in range(len(Vc))) <= 1
+    
     #(12)
     for j in Vf:
         for k in K:
-            if j[0] != k:
+            if j[0] != mapK[k]:
                 problem += pulp.lpSum(x[Vc[i][0],j[0],k] for i in range(len(Vc)) if Vc[i][0]!=j[0]) == 0
     #(13)
     for i in Vd:
         for k in K:
-            if k != i[0]:
+            if mapK[k] != i[0]:
                 problem += pulp.lpSum(x[i[0],Vc[j][0],k] for j in range(len(Vc)) if Vc[j][0]!=i[0]) == 0
+   
+       
+    
+    
+    
     # solve problem
     status = problem.solve()
 
