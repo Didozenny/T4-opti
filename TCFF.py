@@ -42,7 +42,6 @@ def main(args):
     numNodes = 25
     if(len(args) == 3 and args[3] == "moreNodes"):
         numNodes = 40
-    maxTime = 60#10800
     
     file = open(fileN)
     #primera linea
