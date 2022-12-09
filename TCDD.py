@@ -128,7 +128,7 @@ def main(args):
     mapK = {}
     for i in range(len(Vd)):
         mapK[K[i]] = Vd[i][0]
-    totalNodes = len(Vc)+len(Vf)+len(Vd)
+    totalNodes = (Vc)+(Vd)+(Vf)
     
 
     #valor grande
@@ -140,19 +140,19 @@ def main(args):
     #creamos variables
     x = pulp.LpVariable.dicts('x', ((i,j,k) for i in range(totalNodes) for j in range(totalNodes) for k in range(len(K))), lowBound = 0, upBound = 1, cat = 'Binary')
     y = pulp.LpVariable.dicts('y', ((i,j,k) for i in range(totalNodes) for j in range(totalNodes) for k in range(len(K))), lowBound = 0, cat = 'Continuous')
-    z = pulp.LpVariable.dicts('y', ((i,k) for i in range(totalNodes) for k in range(len(K))), lowBound = 0, upBound = 1, cat = 'Binary')
+    z = pulp.LpVariable.dicts('z', ((i,k) for i in range(totalNodes) for k in range(len(K))), lowBound = 0, upBound = 1, cat = 'Binary')
     #funcion objetivo
     problem += 0.5 * pulp.lpSum(dist[i][j]*x[i,j,k] for i in range(totalNodes) for j in range(totalNodes) for k in range(len(K)))
     #restricciones
     #(2)
     for i in Vc:
         for k in K:
-            problem += pulp.lpSum(y[j,i[0],k]-y[i[0],j,k] for j in range(totalNodes) if i[0]!=j) == 2*i[4]*z[i[0],k]
+            problem += pulp.lpSum(y[j[0],i[0],k]-y[i[0],j,k] for j in totalNodes if i[0]!=j[0]) == 2*i[4]*z[i[0],k]
 
     #(3)
-    problem += pulp.lpSum(y[Vd[i][0],Vc[j][0],k] for i in range(len(Vd)) for j in range(len(Vc)) for k in range(len(K))) == pulp.lpSum(Vc[j][4] for j in range(len(Vc)))
+    problem += pulp.lpSum(y[i[0],j[0],k] for i in Vd for j in Vc for k in K) == pulp.lpSum(Vc[j][4] for j in range(len(Vc)))
     #(4)
-    problem += pulp.lpSum(y[Vc[j][0],Vd[i][0],k] for i in range(len(Vd)) for j in range(len(Vc)) for k in range(len(K))) <= (pulp.lpSum(vehicleLoad[k] for k in range(len(K))) - pulp.lpSum(Vc[j][4] for j in range(len(Vc))) )
+    problem += pulp.lpSum(y[j[0],i[0],k] for i in Vd for j in Vc for k in K) <= (pulp.lpSum(vehicleLoad[k] for k in K)) - pulp.lpSum(j[4] for j in Vc)
     #(5)
     for i in Vf:
         for k in K:
