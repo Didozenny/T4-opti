@@ -237,76 +237,76 @@ def main(args):
 
 
     #creamos modelo
-    problem = pulp.LpProblem('MDVRP', pulp.LpMinimize)
+    problem2 = pulp.LpProblem('MDVRP', pulp.LpMinimize)
     #creamos variables
     x = pulp.LpVariable.dicts('x', ((i,j,k) for i in range(len(totalNodes)) for j in range(len(totalNodes)) for k in range(len(K))), lowBound = 0, upBound = 1, cat = 'Binary')
     y = pulp.LpVariable.dicts('y', ((i,j,k) for i in range(len(totalNodes)) for j in range(len(totalNodes)) for k in range(len(K))), lowBound = 0, cat = 'Continuous')
     z = pulp.LpVariable.dicts('z', ((i,k) for i in range(len(totalNodes)) for k in range(len(K))), lowBound = 0, upBound = 1, cat = 'Binary')
     #funcion objetivo
-    problem += 0.5 * pulp.lpSum(dist[i[0]][j[0]]*x[i[0],j[0],k] for i in totalNodes for j in totalNodes for k in range(len(K)))
+    problem2 += 0.5 * pulp.lpSum(dist[i[0]][j[0]]*x[i[0],j[0],k] for i in totalNodes for j in totalNodes for k in range(len(K)))
     #restricciones
     #(2)
     for i in Vc:
         for k in K:
-            problem += pulp.lpSum(y[j[0],i[0],k]-y[i[0],j[0],k] for j in totalNodes if i[0]!=j[0]) == 2*i[4]*z[i[0],k]
+            problem2 += pulp.lpSum(y[j[0],i[0],k]-y[i[0],j[0],k] for j in totalNodes if i[0]!=j[0]) == 2*i[4]*z[i[0],k]
 
     #(3)
-    problem += pulp.lpSum(y[i[0],j[0],k] for i in Vd for j in Vc for k in K) == pulp.lpSum(Vc[j][4] for j in range(len(Vc)))
+    problem2 += pulp.lpSum(y[i[0],j[0],k] for i in Vd for j in Vc for k in K) == pulp.lpSum(Vc[j][4] for j in range(len(Vc)))
     #(4)
-    problem += pulp.lpSum(y[j[0],i[0],k] for i in Vd for j in Vc for k in K) <= (pulp.lpSum(vehicleLoad[k] for k in K)) - pulp.lpSum(j[4] for j in Vc)
+    problem2 += pulp.lpSum(y[j[0],i[0],k] for i in Vd for j in Vc for k in K) <= (pulp.lpSum(vehicleLoad[k] for k in K)) - pulp.lpSum(j[4] for j in Vc)
     #(5)
     for i in Vf:
         for k in K:
-            problem += pulp.lpSum(y[i[0],j[0],k] for j in Vc if i[0] != j) <= vehicleLoad[k]
+            problem2 += pulp.lpSum(y[i[0],j[0],k] for j in Vc if i[0] != j) <= vehicleLoad[k]
     #(6)
     for j in Vc:
         for k in K:
-            problem += pulp.lpSum(x[i[0],j[0],k] for i in totalNodes if i[0]!= j[0]) == 2*z[j[0],k]
+            problem2 += pulp.lpSum(x[i[0],j[0],k] for i in totalNodes if i[0]!= j[0]) == 2*z[j[0],k]
     #(7)
     for i in totalNodes:
         for j in totalNodes:
             for k in range(len(K)):
-                problem += y[i[0],j[0],k]+y[j[0],i[0],k] == vehicleLoad[k]*x[i[0],j[0],k]
+                problem2 += y[i[0],j[0],k]+y[j[0],i[0],k] == vehicleLoad[k]*x[i[0],j[0],k]
     #(8)
     for i in Vc:
-        problem += pulp.lpSum(z[i[0],k] for k in K)
+        problem2 += pulp.lpSum(z[i[0],k] for k in K)
 
     #(9)
     for i in Vc:
         for j in totalNodes:
             for k in K:
                 if i[0]!=j:
-                    problem += y[i[0],j[0],k] <= BM*z[i[0],k]
+                    problem2 += y[i[0],j[0],k] <= BM*z[i[0],k]
 
     #(10)
     for k in K:
-        problem += pulp.lpSum(i[3]*x[i[0],j[0],k] for i in Vc for j in totalNodes if i[0]!=j) + pulp.lpSum(dist[i[0],j[0]]*x[i[0],j[0],k] for i in Vc for j in totalNodes if i[0]!=j) <= 2*depotDuration[0]
+        problem2 += pulp.lpSum(i[3]*x[i[0],j[0],k] for i in Vc for j in totalNodes if i[0]!=j) + pulp.lpSum(dist[i[0],j[0]]*x[i[0],j[0],k] for i in Vc for j in totalNodes if i[0]!=j) <= 2*depotDuration[0]
     #(11) Tenemos un solo vehiculo por depot por lo que podemos utilizar i tanto en i como en k
     for i in Vd:
         for k in K:
             if mapK[k]==i[0]:
-                problem += pulp.lpSum(x[i[0],j[0],k] for j in Vc) <= 1
+                problem2 += pulp.lpSum(x[i[0],j[0],k] for j in Vc) <= 1
     
     #(12)
     for j in Vf:
         for k in K:
             if j[0] != mapK[k]:
-                problem += pulp.lpSum(x[i[0],j[0],k] for i in Vc if i[0]!=j[0]) == 0
+                problem2 += pulp.lpSum(x[i[0],j[0],k] for i in Vc if i[0]!=j[0]) == 0
     #(13)
     for i in Vd:
         for k in K:
             if mapK[k] != i[0]:
-                problem += pulp.lpSum(x[i[0],j[0],k] for j in Vc if j[0]!=i[0]) == 0
+                problem2 += pulp.lpSum(x[i[0],j[0],k] for j in Vc if j[0]!=i[0]) == 0
    
        
     
     solver = pulp.GUROBI_CMD(timeLimit= 300)  
     
     # solve problem
-    status = problem.solve(solver)
+    status = problem2.solve(solver)
 
     # output status, value of objective function
-    status, pulp.LpStatus[status], pulp.value(problem.objective)
+    status, pulp.LpStatus[status], pulp.value(problem2.objective)
 
 
 
