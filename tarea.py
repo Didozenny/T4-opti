@@ -202,119 +202,83 @@ def main(args):
 
 
 
-# solve problem
+    # solve problem
     solver = pulp.GUROBI_CMD(timeLimit= 10800)
-    status = problem.solve(solver)
-    
-    # output status, value of objective function
-    status, pulp.LpStatus[status], pulp.value(problem.objective)
+    status = problem.solve(solver) 
 
-
-#comenzamos el two comodity flow formulation
-    #creamos los sets para poder utilizarlos dentro del programa
-    Vc = clientData
-    Vd = depotData
-    #copia de depot
-    Vf = []
-    for i in range(len(depotData)):
-        Vf.append(depotData[i].copy())
-    #hay que cambiar los indices para que coincidan con los indices de las distancias asi
-    for i in range(len(Vc)):
-        Vc[i][0] = Vc[i][0]-1
-    for i in range(len(Vd)):
-        Vd[i][0] = Vd[i][0]-1
-    for i in range (len(Vf)):
-        Vf[i][0] = Vf[i][0]+3
-    K = list(range(0,nDepots))
-    mapK = {}
-    for i in range(len(Vd)):
-        mapK[K[i]] = Vd[i][0]
-    totalNodes = (Vc)+(Vd)+(Vf)
-    
-
-    #valor grande
-    BM = 999999999
-
-
-    #creamos modelo
-    problem2 = pulp.LpProblem('MDVRP', pulp.LpMinimize)
+        #creamos modelo Two-commodity flow formulation
+    problem = pulp.LpProblem('MDVRP', pulp.LpMinimize)
     #creamos variables
     x = pulp.LpVariable.dicts('x', ((i,j,k) for i in range(len(totalNodes)) for j in range(len(totalNodes)) for k in range(len(K))), lowBound = 0, upBound = 1, cat = 'Binary')
     y = pulp.LpVariable.dicts('y', ((i,j,k) for i in range(len(totalNodes)) for j in range(len(totalNodes)) for k in range(len(K))), lowBound = 0, cat = 'Continuous')
     z = pulp.LpVariable.dicts('z', ((i,k) for i in range(len(totalNodes)) for k in range(len(K))), lowBound = 0, upBound = 1, cat = 'Binary')
     #funcion objetivo
-    problem2 += 0.5 * pulp.lpSum(dist[i[0]][j[0]]*x[i[0],j[0],k] for i in totalNodes for j in totalNodes for k in range(len(K)))
+    problem += 0.5 * pulp.lpSum(dist[i[0]][j[0]]*x[i[0],j[0],k] for i in totalNodes for j in totalNodes for k in range(len(K)))
     #restricciones
     #(2)
     for i in Vc:
         for k in K:
-            problem2 += pulp.lpSum(y[j[0],i[0],k]-y[i[0],j[0],k] for j in totalNodes if i[0]!=j[0]) == 2*i[4]*z[i[0],k]
+            problem += pulp.lpSum(y[j[0],i[0],k]-y[i[0],j[0],k] for j in totalNodes if i[0]!=j[0]) == 2*i[4]*z[i[0],k]
 
     #(3)
-    problem2 += pulp.lpSum(y[i[0],j[0],k] for i in Vd for j in Vc for k in K) == pulp.lpSum(Vc[j][4] for j in range(len(Vc)))
+    problem += pulp.lpSum(y[i[0],j[0],k] for i in Vd for j in Vc for k in K) == pulp.lpSum(Vc[j][4] for j in range(len(Vc)))
     #(4)
-    problem2 += pulp.lpSum(y[j[0],i[0],k] for i in Vd for j in Vc for k in K) <= (pulp.lpSum(vehicleLoad[k] for k in K)) - pulp.lpSum(j[4] for j in Vc)
+    problem += pulp.lpSum(y[j[0],i[0],k] for i in Vd for j in Vc for k in K) <= (pulp.lpSum(vehicleLoad[k] for k in K)) - pulp.lpSum(j[4] for j in Vc)
     #(5)
     for i in Vf:
         for k in K:
-            problem2 += pulp.lpSum(y[i[0],j[0],k] for j in Vc if i[0] != j) <= vehicleLoad[k]
+            problem += pulp.lpSum(y[i[0],j[0],k] for j in Vc if i[0] != j) <= vehicleLoad[k]
     #(6)
     for j in Vc:
         for k in K:
-            problem2 += pulp.lpSum(x[i[0],j[0],k] for i in totalNodes if i[0]!= j[0]) == 2*z[j[0],k]
+            problem += pulp.lpSum(x[i[0],j[0],k] for i in totalNodes if i[0]!= j[0]) == 2*z[j[0],k]
     #(7)
     for i in totalNodes:
         for j in totalNodes:
             for k in range(len(K)):
-                problem2 += y[i[0],j[0],k]+y[j[0],i[0],k] == vehicleLoad[k]*x[i[0],j[0],k]
+                problem += y[i[0],j[0],k]+y[j[0],i[0],k] == vehicleLoad[k]*x[i[0],j[0],k]
     #(8)
     for i in Vc:
-        problem2 += pulp.lpSum(z[i[0],k] for k in K)
+        problem += pulp.lpSum(z[i[0],k] for k in K)
 
     #(9)
     for i in Vc:
         for j in totalNodes:
             for k in K:
                 if i[0]!=j:
-                    problem2 += y[i[0],j[0],k] <= BM*z[i[0],k]
+                    problem += y[i[0],j[0],k] <= BM*z[i[0],k]
 
     #(10)
     for k in K:
-        problem2 += pulp.lpSum(i[3]*x[i[0],j[0],k] for i in Vc for j in totalNodes if i[0]!=j) + pulp.lpSum(dist[i[0],j[0]]*x[i[0],j[0],k] for i in Vc for j in totalNodes if i[0]!=j) <= 2*depotDuration[0]
+        problem += pulp.lpSum(i[3]*x[i[0],j[0],k] for i in Vc for j in totalNodes if i[0]!=j) + pulp.lpSum(dist[i[0],j[0]]*x[i[0],j[0],k] for i in Vc for j in totalNodes if i[0]!=j) <= 2*depotDuration[0]
     #(11) Tenemos un solo vehiculo por depot por lo que podemos utilizar i tanto en i como en k
     for i in Vd:
         for k in K:
             if mapK[k]==i[0]:
-                problem2 += pulp.lpSum(x[i[0],j[0],k] for j in Vc) <= 1
+                problem += pulp.lpSum(x[i[0],j[0],k] for j in Vc) <= 1
     
     #(12)
     for j in Vf:
         for k in K:
             if j[0] != mapK[k]:
-                problem2 += pulp.lpSum(x[i[0],j[0],k] for i in Vc if i[0]!=j[0]) == 0
+                problem += pulp.lpSum(x[i[0],j[0],k] for i in Vc if i[0]!=j[0]) == 0
     #(13)
     for i in Vd:
         for k in K:
             if mapK[k] != i[0]:
-                problem2 += pulp.lpSum(x[i[0],j[0],k] for j in Vc if j[0]!=i[0]) == 0
+                problem += pulp.lpSum(x[i[0],j[0],k] for j in Vc if j[0]!=i[0]) == 0
    
        
     
     solver = pulp.GUROBI_CMD(timeLimit= 300)  
     
     # solve problem
-    status = problem2.solve(solver)
+    status = problem.solve(solver)
 
     # output status, value of objective function
-    status, pulp.LpStatus[status], pulp.value(problem2.objective)
+    status, pulp.LpStatus[status], pulp.value(problem.objective)
 
 
-
-
-
-
-
-        
 
 if __name__ == "__main__":
     args = sys.argv
